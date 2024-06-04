@@ -3,20 +3,20 @@ on:
   workflow_dispatch:
   push:
     paths:
-      - 'src/**'
-      - 'package.json'
-      - 'Dockerfile'
+      - src/**
+      - package.json
+      - Dockerfile
     branches: ['master']
   pull_request:
     paths:
-      - 'src/**'
-      - 'package.json'
-      - 'Dockerfile'
+      - src/**
+      - package.json
+      - Dockerfile
     branches: ['master']
 
 env:
-  NODE_VERSION: '20'
-  DOCKER_IMAGE: 'v8ight-be'
+  NODE_VERSION: 20
+  DOCKER_IMAGE: v8ight-be
 
 jobs:
   build-and-deploy:
