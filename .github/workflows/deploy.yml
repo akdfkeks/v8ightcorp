@@ -16,7 +16,7 @@ on:
 
 env:
   NODE_VERSION: '20'
-  DOCKER_IMAGE: 'akdfkeks/v8ight-be'
+  DOCKER_IMAGE: 'v8ight-be'
 
 jobs:
   build-and-deploy:
