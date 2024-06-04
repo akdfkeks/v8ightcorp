@@ -1,6 +1,6 @@
-name: Node.js CI/CD Pipeline with Docker
-
+name: deploy
 on:
+  workflow_dispatch:
   push:
     paths:
       - 'src/**'
