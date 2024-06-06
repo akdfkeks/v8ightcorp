@@ -80,4 +80,4 @@ jobs:
             docker pull ${{ secrets.DOCKER_USERNAME }}/${{env.DOCKER_IMAGE}}:latest
             docker stop ${{env.DOCKER_IMAGE}} || true
             docker rm ${{env.DOCKER_IMAGE}} || true
-            docker run -d --name ${{env.DOCKER_IMAGE}} -p 80:3000 ${{ secrets.DOCKER_USERNAME }}/${{env.DOCKER_IMAGE}}:latest
+            docker run --env-file=.env.prod --add-host=host.docker.internal:host-gateway -d --name ${{env.DOCKER_IMAGE}} -p 80:3000 ${{ secrets.DOCKER_USERNAME }}/${{env.DOCKER_IMAGE}}:latest
