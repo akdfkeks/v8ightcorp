@@ -1,4 +1,10 @@
 import { BaseEntity, Column, Entity, Index, PrimaryGeneratedColumn } from 'typeorm';
+import * as bcrypt from 'bcrypt';
+
+export enum UserRole {
+  ADMIN = 'admin',
+  NORMAL = 'normal',
+}
 
 @Entity({ name: 'user' })
 export class UserEntity extends BaseEntity {
@@ -14,6 +20,15 @@ export class UserEntity extends BaseEntity {
   @Column({ name: 'name' })
   name: string;
 
-  @Column({ name: 'gender' })
-  gender: number;
+  @Column({ name: 'role', type: 'enum', enum: UserRole, default: UserRole.NORMAL })
+  role: UserRole;
+
+  public static async from(dto: { email: string; password: string; name: string; role?: UserRole }) {
+    const user = new UserEntity();
+    user.email = dto.email;
+    user.password = await bcrypt.hash(dto.password, await bcrypt.genSalt(3));
+    user.name = dto.name;
+    user.role = dto.role ?? UserRole.NORMAL;
+    return user;
+  }
 }
