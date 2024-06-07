@@ -1,5 +1,6 @@
-import { BaseEntity, Column, Entity, Index, PrimaryGeneratedColumn } from 'typeorm';
+import { BaseEntity, Column, Entity, Index, OneToMany, PrimaryGeneratedColumn } from 'typeorm';
 import * as bcrypt from 'bcrypt';
+import { ArticleEntity } from './article.entity';
 
 export enum UserRole {
   ADMIN = 'admin',
@@ -22,6 +23,9 @@ export class UserEntity extends BaseEntity {
 
   @Column({ name: 'role', type: 'enum', enum: UserRole, default: UserRole.NORMAL })
   role: UserRole;
+
+  @OneToMany(() => ArticleEntity, (article) => article.author)
+  articles: Array<ArticleEntity>;
 
   public static async from(dto: { email: string; password: string; name: string; role?: UserRole }) {
     const user = new UserEntity();
