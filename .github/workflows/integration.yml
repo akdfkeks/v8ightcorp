@@ -1,0 +1,38 @@
+name: integration
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - src/**
+      - package.json
+      - Dockerfile
+    branches: ['master']
+
+env:
+  NODE_VERSION: 20
+  DOCKER_IMAGE: v8ight-be
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js Environment
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20' # 적절한 Node.js 버전으로 설정
+
+      - name: Install dependencies with yarn
+        run: yarn install
+
+      - name: Create ENV file
+        run: |
+          touch .env.test
+          echo ACCESS_TOKEN_SECRET=${{secrets.ACCESS_TOKEN_SECRET}} >> .env.test
+          echo REFRESH_TOKEN_SECRET=${{secrets.REFRESH_TOKEN_SECRET}} >> .env.test
+
+      - name: Run tests
+        run: yarn run test
