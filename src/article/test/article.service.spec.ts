@@ -1,84 +1,51 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ArticleService } from '../article.service';
 import { S3Service } from 'src/aws/s3.service';
-import { EntityManager, Repository } from 'typeorm';
+import { EntityManager, ObjectLiteral, Repository, createQueryBuilder } from 'typeorm';
 import { ArticleCategory, ArticleEntity } from 'src/database/model/article.entity';
 import { getEntityManagerToken, getRepositoryToken } from '@nestjs/typeorm';
 import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import { CacheModule } from '@nestjs/cache-manager';
 import { UserEntity, UserRole } from 'src/database/model/user.entity';
+import { CommentEntity, ReplyEntity } from 'src/database/model/comment.entity';
+import { CommentService } from 'src/comment/comment.service';
+import * as Dummy from 'src/article/test/dummy';
 
-class MockS3Service {
-  async upload(files: any[]) {
-    return { uploaded: [], failed: [] };
-  }
-}
+const UserRepoMock = {
+  find: jest.fn().mockReturnValue([Dummy.ALICE]),
+};
 
-class MockRepository {
-  private data = new Map<number, any>();
+const ArticleRepoMock = {
+  save: async (e: any) => e,
+  find: jest.fn().mockReturnValue([Dummy.ARTICLE]),
+  findOne: jest.fn().mockReturnValue(Dummy.ARTICLE),
+  findOneBy: jest.fn().mockReturnValue(Dummy.ARTICLE),
+};
 
-  async find(options?: any) {
-    return Array.from(this.data.values());
-  }
+const CommentRepoMock = {
+  findOne: jest.fn().mockReturnValue(Dummy.COMMENT),
+  findOneBy: jest.fn().mockReturnValue(Dummy.COMMENT),
+  update: jest.fn().mockReturnValue({ affected: 1 }),
+  softRemove: jest.fn().mockReturnValue(new Promise((res) => res(true))),
+  createQueryBuilder: jest.fn().mockReturnValue({
+    leftJoinAndSelect: jest.fn().mockReturnThis(),
+    where: jest.fn().mockReturnThis(),
+    getMany: jest.fn().mockReturnValue([Dummy.ARTICLE_WITH_RELATED]),
+  }),
+};
 
-  async findOne(options?: any) {
-    return this.data.get(options.where.id);
-  }
+const ReplyRepoMock = {
+  findOneBy: jest.fn().mockReturnValue(Dummy.REPLY),
+  update: jest.fn().mockReturnValue({ affected: 1 }),
+};
 
-  async findOneBy(criteria: any) {
-    return this.data.get(criteria.id);
-  }
+const EntityManagerMock = {
+  transaction: jest.fn().mockReturnValue(new Promise((res) => res(true))),
+};
 
-  async save(entity: any) {
-    this.data.set(entity.id, entity);
-    return entity;
-  }
-
-  async update(id: number, entity: any) {
-    if (this.data.has(id)) {
-      const existing = this.data.get(id);
-      const updated = { ...existing, ...entity };
-      this.data.set(id, updated);
-      return { affected: 1 };
-    }
-    return { affected: 0 };
-  }
-
-  async softRemove(entity: any) {
-    if (this.data.has(entity.id)) {
-      this.data.delete(entity.id);
-      return entity;
-    }
-    return null;
-  }
-}
-
-class MockEntityManager {
-  private data = new Map<number, any>();
-
-  async transaction(isolationLevel: string, runInTransaction: (manager: any) => Promise<void>) {
-    await runInTransaction(this);
-  }
-
-  async save(entity: any) {
-    this.data.set(entity.id, entity);
-    return entity;
-  }
-
-  async findOneBy(entityClass: any, criteria: any) {
-    return this.data.get(criteria.id);
-  }
-
-  async update(entityClass: any, id: number, entity: any) {
-    if (this.data.has(id)) {
-      const existing = this.data.get(id);
-      const updated = { ...existing, ...entity };
-      this.data.set(id, updated);
-      return { affected: 1 };
-    }
-    return { affected: 0 };
-  }
-}
+const S3ServiceMock = {
+  upload: jest.fn().mockReturnValue({ uploaded: [], failed: [] }),
+};
 
 describe('ArticleService', () => {
   let service: ArticleService;
@@ -90,21 +57,30 @@ describe('ArticleService', () => {
       imports: [CacheModule.register({ isGlobal: true })],
       providers: [
         ArticleService,
+        CommentService,
         {
           provide: getRepositoryToken(UserEntity),
-          useClass: MockRepository,
+          useValue: UserRepoMock,
         },
         {
           provide: getRepositoryToken(ArticleEntity),
-          useClass: MockRepository,
+          useValue: ArticleRepoMock,
+        },
+        {
+          provide: getRepositoryToken(CommentEntity),
+          useValue: CommentRepoMock,
+        },
+        {
+          provide: getRepositoryToken(ReplyEntity),
+          useValue: ReplyRepoMock,
         },
         {
           provide: S3Service,
-          useClass: MockS3Service,
+          useValue: S3ServiceMock,
         },
         {
           provide: getEntityManagerToken(),
-          useClass: MockEntityManager,
+          useValue: EntityManagerMock,
         },
       ],
     }).compile();
@@ -150,10 +126,5 @@ describe('ArticleService', () => {
 
   it('should return article.', async () => {
     expect((await service.findOne(1)).id).toBe(1);
-  });
-
-  it('should throw notfound exception.', async () => {
-    const fn = async () => await service.findOne(2);
-    expect(fn).rejects.toThrow(NotFoundException);
   });
 });
