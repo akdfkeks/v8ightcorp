@@ -17,7 +17,7 @@ import { UserEntity, UserRole } from 'src/database/model/user.entity';
 import { FindArticlesQueryDto, Period, SortOrder } from 'src/article/dto/find-articles.dto';
 import { ImageEntity } from 'src/database/model/image.entity';
 import { Cron } from '@nestjs/schedule';
-import { SearchArticlesQueryDto, SerachType } from 'src/article/dto/search-articles.dto';
+import { SearchArticlesQueryDto, SearchType } from 'src/article/dto/search-articles.dto';
 import { CommentService } from 'src/comment/comment.service';
 import { isAdmin } from 'src/common/util/user';
 import { isNotice } from 'src/common/util/article';
@@ -81,11 +81,11 @@ export class ArticleService {
     };
 
     switch (query.type) {
-      case SerachType.TITLE:
+      case SearchType.TITLE:
         whereCondition.where = { title: Like(`%${query.keyword}%`) };
         break;
 
-      case SerachType.AUTHOR:
+      case SearchType.AUTHOR:
         const users = await this.userRepository.find({
           where: { name: Like(`%${query.keyword}%`) },
         });
@@ -93,7 +93,7 @@ export class ArticleService {
         whereCondition.where = [{ author: { id: In(userIds) } }];
         break;
 
-      case SerachType.ALL:
+      case SearchType.ALL:
         const matchedUsers = await this.userRepository.find({
           where: { name: Like(`%${query.keyword}%`) },
         });
