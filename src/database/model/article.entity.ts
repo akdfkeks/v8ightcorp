@@ -13,6 +13,7 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 import { ImageEntity } from './image.entity';
+import { CommentEntity } from './comment.entity';
 
 export enum ArticleCategory {
   NOTICE = 'notice',
@@ -51,6 +52,9 @@ export class ArticleEntity extends BaseEntity {
 
   @OneToMany(() => ImageEntity, (image) => image.article, { cascade: ['soft-remove'] })
   images: ImageEntity[];
+
+  @OneToMany(() => CommentEntity, (comment) => comment.article, { cascade: ['soft-remove'] })
+  comments: CommentEntity[];
 
   static from(payload: CreateArticleDto & { authorId: number }): ArticleEntity {
     const entity = new ArticleEntity();

@@ -18,6 +18,7 @@ import { FindArticlesQueryDto, Period, SortOrder } from 'src/article/dto/find-ar
 import { ImageEntity } from 'src/database/model/image.entity';
 import { Cron } from '@nestjs/schedule';
 import { SearchArticlesQueryDto, SerachType } from 'src/article/dto/search-articles.dto';
+import { CommentService } from 'src/comment/comment.service';
 
 @Injectable()
 export class ArticleService {
@@ -31,9 +32,14 @@ export class ArticleService {
     private readonly articleRepository: Repository<ArticleEntity>,
     @InjectEntityManager()
     private readonly entityManager: EntityManager,
+    private readonly commentService: CommentService,
   ) {}
 
-  public async create(user: ReqUser, payload: CreateArticleDto, files: Array<Express.Multer.File> = []) {
+  public async create(
+    user: ReqUser,
+    payload: CreateArticleDto,
+    files: Array<Express.Multer.File> = [],
+  ) {
     if (user.role !== UserRole.ADMIN && payload.category == ArticleCategory.NOTICE) {
       throw new ForbiddenException('권한이 없습니다.');
     }
@@ -82,7 +88,10 @@ export class ArticleService {
           where: { name: Like(`%${query.keyword}%`) },
         });
         const matchedUserIds = matchedUsers.map((user) => user.id);
-        whereCondition.where = [{ title: Like(`%${query.keyword}%`) }, { author: In(matchedUserIds) }];
+        whereCondition.where = [
+          { title: Like(`%${query.keyword}%`) },
+          { author: In(matchedUserIds) },
+        ];
         break;
     }
 
@@ -133,10 +142,12 @@ export class ArticleService {
 
     this.articleStore.set(id.toString(), { ...article, view: ++article.view }, 11000);
 
+    const commentsWithReplies = await this.commentService.getCommentsAndReplies(id);
+
     const { deletedAt, updatedAt, images: imgs, ...rest } = article;
     const images = imgs ? imgs.map((v) => v.url) : [];
 
-    return { ...rest, images, view: rest.view };
+    return { ...rest, images, view: rest.view, comments: commentsWithReplies };
   }
 
   public async update(
@@ -164,16 +175,29 @@ export class ArticleService {
   }
 
   public async remove(user: ReqUser, id: number) {
-    const article = await this.articleRepository.findOneBy({ id });
-    if (!article) {
+    const entity = await this.articleRepository.findOne({
+      where: { id },
+      relations: ['images', 'comments', 'comments.replies'],
+    });
+    if (!entity) {
       throw new NotFoundException('게시글이 존재하지 않습니다.');
     }
 
-    if (article.category === ArticleCategory.NOTICE && user.role !== UserRole.ADMIN) {
+    if (entity.category === ArticleCategory.NOTICE && user.role !== UserRole.ADMIN) {
       throw new ForbiddenException('권한이 없습니다.');
     }
 
-    await this.articleRepository.softRemove(article);
+    await this.entityManager
+      .transaction(async (tx) => {
+        await Promise.all([
+          ...entity.comments.map((comment) => tx.softRemove(comment)),
+          tx.softRemove(entity),
+        ]);
+      })
+      .catch((e) => {
+        console.log(e);
+        throw new InternalServerErrorException('게시글 삭제 중 오류가 발생했습니다.');
+      });
 
     return { message: '게시글을 삭제했습니다.' };
   }

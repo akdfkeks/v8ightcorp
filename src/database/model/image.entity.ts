@@ -24,7 +24,7 @@ export class ImageEntity extends BaseEntity {
   @DeleteDateColumn({ name: 'deleted_at', type: 'timestamp', nullable: true })
   deletedAt: Date | null;
 
-  @ManyToOne(() => ArticleEntity, (article) => article.id, { onDelete: 'CASCADE' })
+  @ManyToOne(() => ArticleEntity, (article) => article.id)
   @JoinColumn({ name: 'article_id' })
   article: ArticleEntity;
 
