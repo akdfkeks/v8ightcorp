@@ -74,7 +74,7 @@ describe('ArticleService', () => {
     expect(result).toEqual({ message: '게시글을 등록했습니다.' });
   });
 
-  it('일반 사용자는 공지사항을 등록할 수 없습니다.', async () => {
+  it('사용자는 공지사항을 등록할 수 없습니다.', async () => {
     const work = async () =>
       await service.create(
         { id: 1, role: UserRole.NORMAL },
@@ -98,12 +98,17 @@ describe('ArticleService', () => {
     expect(result).toEqual({ message: '게시글을 삭제했습니다.' });
   });
 
-  it('일반 사용자는 자신의 글만 삭제할 수 있습니다.', async () => {
+  it('관리자는 사용자의 글을 삭제할 수 있습니다.', async () => {
+    const result = await service.remove({ id: 2, role: UserRole.ADMIN }, 1);
+    expect(result).toEqual({ message: '게시글을 삭제했습니다.' });
+  });
+
+  it('사용자는 자신의 글만 삭제할 수 있습니다.', async () => {
     const work = async () => await service.remove({ id: 2, role: UserRole.NORMAL }, 1);
     expect(work).rejects.toThrow(ForbiddenException);
   });
 
-  it('일반 사용자는 공지사항을 삭제할 수 없습니다.', async () => {
+  it('사용자는 공지사항을 삭제할 수 없습니다.', async () => {
     const work = async () => await service.remove({ id: 1, role: UserRole.NORMAL }, 1);
     expect(work).rejects.toThrow(ForbiddenException);
   });

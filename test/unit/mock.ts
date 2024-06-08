@@ -70,26 +70,29 @@ export const UserRepoMock = {
 
 export const ArticleRepoMock = {
   save: async (e: any) => e,
-  find: jest.fn().mockReturnValue([ARTICLE]),
-  findOne: jest.fn().mockReturnValue(ARTICLE),
-  findOneBy: jest.fn().mockReturnValue(ARTICLE),
+  find: jest.fn().mockReturnValue(new Promise((res) => res([ARTICLE]))),
+  findOne: jest.fn().mockReturnValue(new Promise((res) => res(ARTICLE))),
+  findOneBy: jest.fn().mockReturnValue(new Promise((res) => res(ARTICLE))),
 };
 
 export const CommentRepoMock = {
-  findOne: jest.fn().mockReturnValue(COMMENT),
-  findOneBy: jest.fn().mockReturnValue(COMMENT),
-  update: jest.fn().mockReturnValue({ affected: 1 }),
+  save: async (e: any) => e,
+  findOne: jest.fn().mockReturnValue(new Promise((res) => res(COMMENT))),
+  findOneBy: jest.fn().mockReturnValue(new Promise((res) => res(COMMENT))),
+  update: jest.fn().mockReturnValue(new Promise((res) => res({ affected: 1 }))),
   softRemove: jest.fn().mockReturnValue(new Promise((res) => res(true))),
   createQueryBuilder: jest.fn().mockReturnValue({
     leftJoinAndSelect: jest.fn().mockReturnThis(),
     where: jest.fn().mockReturnThis(),
-    getMany: jest.fn().mockReturnValue([ARTICLE_WITH_RELATED]),
+    getMany: jest.fn().mockReturnValue(new Promise((res) => res([ARTICLE_WITH_RELATED]))),
   }),
 };
 
 export const ReplyRepoMock = {
-  findOneBy: jest.fn().mockReturnValue(REPLY),
-  update: jest.fn().mockReturnValue({ affected: 1 }),
+  save: async (e: any) => e,
+  findOneBy: jest.fn().mockReturnValue(new Promise((res) => res(REPLY))),
+  update: jest.fn().mockReturnValue(new Promise((res) => res({ affected: 1 }))),
+  softRemove: jest.fn().mockReturnValue(new Promise((res) => res(true))),
 };
 
 export const EntityManagerMock = {
@@ -97,5 +100,5 @@ export const EntityManagerMock = {
 };
 
 export const S3ServiceMock = {
-  upload: jest.fn().mockReturnValue({ uploaded: [], failed: [] }),
+  upload: jest.fn().mockReturnValue(new Promise((res) => res({ uploaded: [], failed: [] }))),
 };
