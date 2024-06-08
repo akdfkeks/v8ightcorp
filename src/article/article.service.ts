@@ -12,11 +12,12 @@ import { ReqUser } from 'src/common/interface/user';
 import { S3Service } from 'src/aws/s3.service';
 import { InjectEntityManager, InjectRepository } from '@nestjs/typeorm';
 import { ArticleCategory, ArticleEntity } from 'src/database/model/article.entity';
-import { EntityManager, FindManyOptions, MoreThan, Repository } from 'typeorm';
-import { UserRole } from 'src/database/model/user.entity';
+import { EntityManager, FindManyOptions, In, Like, MoreThan, Repository } from 'typeorm';
+import { UserEntity, UserRole } from 'src/database/model/user.entity';
 import { FindArticlesQueryDto, Period, SortOrder } from 'src/article/dto/find-articles.dto';
 import { ImageEntity } from 'src/database/model/image.entity';
 import { Cron } from '@nestjs/schedule';
+import { SearchArticlesQueryDto, SerachType } from 'src/article/dto/search-articles.dto';
 
 @Injectable()
 export class ArticleService {
@@ -24,6 +25,8 @@ export class ArticleService {
     @Inject(CACHE_MANAGER)
     private readonly articleStore: Cache,
     private readonly s3service: S3Service,
+    @InjectRepository(UserEntity)
+    private readonly userRepository: Repository<UserEntity>,
     @InjectRepository(ArticleEntity)
     private readonly articleRepository: Repository<ArticleEntity>,
     @InjectEntityManager()
@@ -56,11 +59,41 @@ export class ArticleService {
     return { message: '게시글을 등록했습니다.' };
   }
 
+  public async search(query: SearchArticlesQueryDto) {
+    const whereCondition: FindManyOptions<ArticleEntity> = {
+      take: 20,
+      skip: (query.page - 1) * 20,
+      select: ['id', 'title', 'category', 'view', 'createdAt'],
+    };
+
+    switch (query.type) {
+      case SerachType.TITLE:
+        whereCondition.where = { title: Like(`%${query.keyword}%`) };
+        break;
+      case SerachType.AUTHOR:
+        const users = await this.userRepository.find({
+          where: { name: Like(`%${query.keyword}%`) },
+        });
+        const userIds = users.map((user) => user.id);
+        whereCondition.where = [{ author: { id: In(userIds) } }];
+        break;
+      case SerachType.ALL:
+        const matchedUsers = await this.userRepository.find({
+          where: { name: Like(`%${query.keyword}%`) },
+        });
+        const matchedUserIds = matchedUsers.map((user) => user.id);
+        whereCondition.where = [{ title: Like(`%${query.keyword}%`) }, { author: In(matchedUserIds) }];
+        break;
+    }
+
+    return { articles: await this.articleRepository.find(whereCondition) };
+  }
+
   public async findMany(query: FindArticlesQueryDto) {
     const options: FindManyOptions<ArticleEntity> = {
       order: query.sort === SortOrder.Latest ? { createdAt: 'DESC' } : { view: 'DESC' },
       take: 20,
-      skip: query.page * 20,
+      skip: (query.page - 1) * 20,
       select: ['id', 'title', 'category', 'view', 'createdAt'],
     };
 

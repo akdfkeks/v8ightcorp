@@ -19,6 +19,7 @@ import { ReqUser } from 'src/common/interface/user';
 import { PublicRoute } from 'src/common/decorator/public';
 import { FilesInterceptor } from '@nestjs/platform-express';
 import { FindArticlesQueryDto } from 'src/article/dto/find-articles.dto';
+import { SearchArticlesQueryDto } from 'src/article/dto/search-articles.dto';
 
 @Controller('articles')
 export class ArticleController {
@@ -32,6 +33,12 @@ export class ArticleController {
     @Body() createArticleDto: CreateArticleDto,
   ) {
     return this.articleService.create(user, createArticleDto, files);
+  }
+
+  @PublicRoute()
+  @Get('search')
+  async search(@Query() query: SearchArticlesQueryDto) {
+    return this.articleService.search(query);
   }
 
   @PublicRoute()

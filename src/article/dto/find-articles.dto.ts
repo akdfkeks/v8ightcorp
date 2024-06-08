@@ -23,8 +23,8 @@ export class FindArticlesQueryDto {
   period: Period = Period.Week;
 
   @IsInt()
-  @Min(0)
+  @Min(1)
   @Transform(({ value }) => +value)
   @IsOptional()
-  page: number = 0;
+  page: number = 1;
 }
