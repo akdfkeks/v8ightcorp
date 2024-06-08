@@ -28,10 +28,10 @@ export class ImageEntity extends BaseEntity {
   @JoinColumn({ name: 'article_id' })
   article: ArticleEntity;
 
-  static from({ url, article }: { url: string; article: ArticleEntity }) {
+  static from({ url, articleId }: { url: string; articleId: number }) {
     const image = new ImageEntity();
     image.url = url;
-    image.article = article;
+    image.article = { id: articleId } as ArticleEntity;
     return image;
   }
 }

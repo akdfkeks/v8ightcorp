@@ -54,7 +54,7 @@ export class ArticleService {
       .transaction('REPEATABLE READ', async (manager) => {
         const article = await manager.save(ArticleEntity.from({ ...payload, authorId: user.id }));
         const imageEntities = uploadResult.uploaded.map((upload) =>
-          ImageEntity.from({ url: upload.location, article }),
+          ImageEntity.from({ url: upload.location, articleId: article.id }),
         );
         await manager.save(imageEntities);
       })
