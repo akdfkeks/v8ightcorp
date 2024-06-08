@@ -6,7 +6,7 @@ import { ArticleCategory, ArticleEntity } from 'src/database/model/article.entit
 import { getEntityManagerToken, getRepositoryToken } from '@nestjs/typeorm';
 import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import { CacheModule } from '@nestjs/cache-manager';
-import { UserRole } from 'src/database/model/user.entity';
+import { UserEntity, UserRole } from 'src/database/model/user.entity';
 
 class MockS3Service {
   async upload(files: any[]) {
@@ -90,6 +90,10 @@ describe('ArticleService', () => {
       imports: [CacheModule.register({ isGlobal: true })],
       providers: [
         ArticleService,
+        {
+          provide: getRepositoryToken(UserEntity),
+          useClass: MockRepository,
+        },
         {
           provide: getRepositoryToken(ArticleEntity),
           useClass: MockRepository,
