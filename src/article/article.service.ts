@@ -1,4 +1,5 @@
 import {
+  ConsoleLogger,
   ForbiddenException,
   Inject,
   Injectable,
@@ -76,6 +77,7 @@ export class ArticleService {
       case SerachType.TITLE:
         whereCondition.where = { title: Like(`%${query.keyword}%`) };
         break;
+
       case SerachType.AUTHOR:
         const users = await this.userRepository.find({
           where: { name: Like(`%${query.keyword}%`) },
@@ -83,6 +85,7 @@ export class ArticleService {
         const userIds = users.map((user) => user.id);
         whereCondition.where = [{ author: { id: In(userIds) } }];
         break;
+
       case SerachType.ALL:
         const matchedUsers = await this.userRepository.find({
           where: { name: Like(`%${query.keyword}%`) },
@@ -95,7 +98,12 @@ export class ArticleService {
         break;
     }
 
-    return { articles: await this.articleRepository.find(whereCondition) };
+    const articles = await this.articleRepository.find(whereCondition).catch((e) => {
+      console.log(e); // TODO: logging
+      throw new InternalServerErrorException('게시글 검색에 실패했습니다.');
+    });
+
+    return { articles };
   }
 
   public async findMany(query: FindArticlesQueryDto) {
@@ -125,7 +133,12 @@ export class ArticleService {
       options.where = { createdAt: MoreThan(dateLimit) };
     }
 
-    return { articles: await this.articleRepository.find(options) };
+    const articles = await this.articleRepository.find(options).catch((e) => {
+      console.log(e); // TODO: logging
+      throw new InternalServerErrorException('게시글 목록 조회에 실패했습니다.');
+    });
+
+    return { articles };
   }
 
   public async findOne(id: number) {
@@ -140,9 +153,14 @@ export class ArticleService {
       throw new NotFoundException('게시글이 존재하지 않습니다.');
     }
 
-    this.articleStore.set(id.toString(), { ...article, view: ++article.view }, 11000);
+    this.articleStore.set(id.toString(), { ...article, view: ++article.view }, 11000).catch((e) => {
+      console.log(e); // TODO: logging
+    });
 
-    const commentsWithReplies = await this.commentService.getCommentsAndReplies(id);
+    const commentsWithReplies = await this.commentService.getCommentsAndReplies(id).catch((e) => {
+      console.log(e); // TODO: logging
+      throw new InternalServerErrorException('게시글 조회에 실패했습니다.');
+    });
 
     const { deletedAt, updatedAt, images: imgs, ...rest } = article;
     const images = imgs ? imgs.map((v) => v.url) : [];
@@ -195,7 +213,7 @@ export class ArticleService {
         ]);
       })
       .catch((e) => {
-        console.log(e);
+        console.log(e); // TODO: logging
         throw new InternalServerErrorException('게시글 삭제 중 오류가 발생했습니다.');
       });
 
