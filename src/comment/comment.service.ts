@@ -146,7 +146,7 @@ export class CommentService {
     if (entity.author.id !== user.id || user.role !== UserRole.ADMIN)
       throw new ForbiddenException('답글을 삭제할 권한이 없습니다.');
 
-    await this.commentRepository.softRemove(entity).catch((e) => {
+    await this.replyRepository.softRemove(entity).catch((e) => {
       throw new InternalServerErrorException('답글을 삭제하지 못했습니다.');
     });
 
