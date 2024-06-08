@@ -60,7 +60,7 @@ export class ArticleService {
     const options: FindManyOptions<ArticleEntity> = {
       order: query.sort === SortOrder.Latest ? { createdAt: 'DESC' } : { view: 'DESC' },
       take: 20,
-      skip: query.page * 20,
+      skip: (query.page - 1) * 20,
       select: ['id', 'title', 'category', 'view', 'createdAt'],
     };
 
