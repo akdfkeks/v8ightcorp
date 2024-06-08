@@ -64,4 +64,38 @@ const ARTICLE_WITH_RELATED = {
   ],
 };
 
-export { ALICE, COMMENT, REPLY, ARTICLE, ARTICLE_WITH_RELATED };
+export const UserRepoMock = {
+  find: jest.fn().mockReturnValue([ALICE]),
+};
+
+export const ArticleRepoMock = {
+  save: async (e: any) => e,
+  find: jest.fn().mockReturnValue([ARTICLE]),
+  findOne: jest.fn().mockReturnValue(ARTICLE),
+  findOneBy: jest.fn().mockReturnValue(ARTICLE),
+};
+
+export const CommentRepoMock = {
+  findOne: jest.fn().mockReturnValue(COMMENT),
+  findOneBy: jest.fn().mockReturnValue(COMMENT),
+  update: jest.fn().mockReturnValue({ affected: 1 }),
+  softRemove: jest.fn().mockReturnValue(new Promise((res) => res(true))),
+  createQueryBuilder: jest.fn().mockReturnValue({
+    leftJoinAndSelect: jest.fn().mockReturnThis(),
+    where: jest.fn().mockReturnThis(),
+    getMany: jest.fn().mockReturnValue([ARTICLE_WITH_RELATED]),
+  }),
+};
+
+export const ReplyRepoMock = {
+  findOneBy: jest.fn().mockReturnValue(REPLY),
+  update: jest.fn().mockReturnValue({ affected: 1 }),
+};
+
+export const EntityManagerMock = {
+  transaction: jest.fn().mockReturnValue(new Promise((res) => res(true))),
+};
+
+export const S3ServiceMock = {
+  upload: jest.fn().mockReturnValue({ uploaded: [], failed: [] }),
+};

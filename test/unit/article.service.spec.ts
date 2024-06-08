@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { ArticleService } from '../article.service';
+import { ArticleService } from 'src/article/article.service';
 import { S3Service } from 'src/aws/s3.service';
 import { EntityManager, Repository } from 'typeorm';
 import { ArticleCategory, ArticleEntity } from 'src/database/model/article.entity';
@@ -9,43 +9,14 @@ import { CacheModule } from '@nestjs/cache-manager';
 import { UserEntity, UserRole } from 'src/database/model/user.entity';
 import { CommentEntity, ReplyEntity } from 'src/database/model/comment.entity';
 import { CommentService } from 'src/comment/comment.service';
-import * as Dummy from 'src/article/test/dummy';
-
-const UserRepoMock = {
-  find: jest.fn().mockReturnValue([Dummy.ALICE]),
-};
-
-const ArticleRepoMock = {
-  save: async (e: any) => e,
-  find: jest.fn().mockReturnValue([Dummy.ARTICLE]),
-  findOne: jest.fn().mockReturnValue(Dummy.ARTICLE),
-  findOneBy: jest.fn().mockReturnValue(Dummy.ARTICLE),
-};
-
-const CommentRepoMock = {
-  findOne: jest.fn().mockReturnValue(Dummy.COMMENT),
-  findOneBy: jest.fn().mockReturnValue(Dummy.COMMENT),
-  update: jest.fn().mockReturnValue({ affected: 1 }),
-  softRemove: jest.fn().mockReturnValue(new Promise((res) => res(true))),
-  createQueryBuilder: jest.fn().mockReturnValue({
-    leftJoinAndSelect: jest.fn().mockReturnThis(),
-    where: jest.fn().mockReturnThis(),
-    getMany: jest.fn().mockReturnValue([Dummy.ARTICLE_WITH_RELATED]),
-  }),
-};
-
-const ReplyRepoMock = {
-  findOneBy: jest.fn().mockReturnValue(Dummy.REPLY),
-  update: jest.fn().mockReturnValue({ affected: 1 }),
-};
-
-const EntityManagerMock = {
-  transaction: jest.fn().mockReturnValue(new Promise((res) => res(true))),
-};
-
-const S3ServiceMock = {
-  upload: jest.fn().mockReturnValue({ uploaded: [], failed: [] }),
-};
+import {
+  UserRepoMock,
+  ArticleRepoMock,
+  CommentRepoMock,
+  ReplyRepoMock,
+  S3ServiceMock,
+  EntityManagerMock,
+} from 'test/unit/mock';
 
 describe('ArticleService', () => {
   let service: ArticleService;
