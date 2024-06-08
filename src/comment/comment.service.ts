@@ -126,7 +126,6 @@ export class CommentService {
       where: { id },
       relations: ['replies'],
     });
-    console.log(entity);
 
     if (!entity) throw new NotFoundException('댓글이 존재하지 않습니다.');
     if (entity.authorId !== user.id && !isAdmin(user))
