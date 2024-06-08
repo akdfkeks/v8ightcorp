@@ -20,10 +20,15 @@ import { PublicRoute } from 'src/common/decorator/public';
 import { FilesInterceptor } from '@nestjs/platform-express';
 import { FindArticlesQueryDto } from 'src/article/dto/find-articles.dto';
 import { SearchArticlesQueryDto } from 'src/article/dto/search-articles.dto';
+import { CreateCommentDto } from 'src/comment/dto/create-comment';
+import { CommentService } from 'src/comment/comment.service';
 
 @Controller('articles')
 export class ArticleController {
-  constructor(private readonly articleService: ArticleService) {}
+  constructor(
+    private readonly articleService: ArticleService,
+    private readonly commentService: CommentService,
+  ) {}
 
   @UseInterceptors(FilesInterceptor('images', 5))
   @Post('')
@@ -45,6 +50,15 @@ export class ArticleController {
   @Get('')
   async findMany(@Query() query: FindArticlesQueryDto) {
     return this.articleService.findMany(query);
+  }
+
+  @Post(':id/comments')
+  async createComment(
+    @RequestUser() user: ReqUser,
+    @Param('id', ParseIntPipe) id: number,
+    @Body() payload: CreateCommentDto,
+  ) {
+    return this.commentService.create(user, id, payload);
   }
 
   @PublicRoute()

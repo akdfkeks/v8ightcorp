@@ -7,6 +7,7 @@ import { AuthModule } from 'src/auth/auth.module';
 import { ArticleModule } from 'src/article/article.module';
 import { CacheModule } from '@nestjs/cache-manager';
 import { ScheduleModule } from '@nestjs/schedule';
+import { CommentModule } from 'src/comment/comment.module';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { ScheduleModule } from '@nestjs/schedule';
     UserModule,
     AuthModule,
     ArticleModule,
+    CommentModule,
   ],
   controllers: [AppController],
   providers: [AppService],
