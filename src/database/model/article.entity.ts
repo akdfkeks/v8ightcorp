@@ -25,6 +25,9 @@ export class ArticleEntity extends BaseEntity {
   @PrimaryGeneratedColumn({ name: 'id', unsigned: true })
   id: number;
 
+  @JoinColumn({ name: 'author_id' })
+  authorId: number;
+
   @Column({ name: 'category', type: 'enum', enum: ArticleCategory, default: ArticleCategory.QNA })
   category: ArticleCategory;
 
