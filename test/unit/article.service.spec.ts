@@ -1,51 +1,22 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { ArticleService } from '../article.service';
+import { ArticleService } from 'src/article/article.service';
 import { S3Service } from 'src/aws/s3.service';
-import { EntityManager, ObjectLiteral, Repository, createQueryBuilder } from 'typeorm';
+import { EntityManager, Repository } from 'typeorm';
 import { ArticleCategory, ArticleEntity } from 'src/database/model/article.entity';
 import { getEntityManagerToken, getRepositoryToken } from '@nestjs/typeorm';
-import { ForbiddenException, NotFoundException } from '@nestjs/common';
+import { ForbiddenException } from '@nestjs/common';
 import { CacheModule } from '@nestjs/cache-manager';
 import { UserEntity, UserRole } from 'src/database/model/user.entity';
 import { CommentEntity, ReplyEntity } from 'src/database/model/comment.entity';
 import { CommentService } from 'src/comment/comment.service';
-import * as Dummy from 'src/article/test/dummy';
-
-const UserRepoMock = {
-  find: jest.fn().mockReturnValue([Dummy.ALICE]),
-};
-
-const ArticleRepoMock = {
-  save: async (e: any) => e,
-  find: jest.fn().mockReturnValue([Dummy.ARTICLE]),
-  findOne: jest.fn().mockReturnValue(Dummy.ARTICLE),
-  findOneBy: jest.fn().mockReturnValue(Dummy.ARTICLE),
-};
-
-const CommentRepoMock = {
-  findOne: jest.fn().mockReturnValue(Dummy.COMMENT),
-  findOneBy: jest.fn().mockReturnValue(Dummy.COMMENT),
-  update: jest.fn().mockReturnValue({ affected: 1 }),
-  softRemove: jest.fn().mockReturnValue(new Promise((res) => res(true))),
-  createQueryBuilder: jest.fn().mockReturnValue({
-    leftJoinAndSelect: jest.fn().mockReturnThis(),
-    where: jest.fn().mockReturnThis(),
-    getMany: jest.fn().mockReturnValue([Dummy.ARTICLE_WITH_RELATED]),
-  }),
-};
-
-const ReplyRepoMock = {
-  findOneBy: jest.fn().mockReturnValue(Dummy.REPLY),
-  update: jest.fn().mockReturnValue({ affected: 1 }),
-};
-
-const EntityManagerMock = {
-  transaction: jest.fn().mockReturnValue(new Promise((res) => res(true))),
-};
-
-const S3ServiceMock = {
-  upload: jest.fn().mockReturnValue({ uploaded: [], failed: [] }),
-};
+import {
+  UserRepoMock,
+  ArticleRepoMock,
+  CommentRepoMock,
+  ReplyRepoMock,
+  S3ServiceMock,
+  EntityManagerMock,
+} from 'test/unit/mock';
 
 describe('ArticleService', () => {
   let service: ArticleService;
@@ -88,17 +59,10 @@ describe('ArticleService', () => {
     service = module.get<ArticleService>(ArticleService);
     articleRepository = module.get<Repository<ArticleEntity>>(getRepositoryToken(ArticleEntity));
     entityManager = module.get<EntityManager>(getEntityManagerToken());
-
-    await articleRepository.save({
-      id: 1,
-      title: 'test',
-      content: 'test',
-      category: ArticleCategory.NOTICE,
-    });
   });
 
-  it('should return message.', async () => {
-    const r = await service.create(
+  it('게시글 등록 결과를 반환합니다.', async () => {
+    const result = await service.create(
       { id: 1, role: UserRole.ADMIN },
       {
         title: 'test',
@@ -107,11 +71,11 @@ describe('ArticleService', () => {
       },
       [],
     );
-    expect(r).toEqual({ message: '게시글을 등록했습니다.' });
+    expect(result).toEqual({ message: '게시글을 등록했습니다.' });
   });
 
-  it('should throw forbidden exception.', async () => {
-    const fn = async () =>
+  it('사용자는 공지사항을 등록할 수 없습니다.', async () => {
+    const work = async () =>
       await service.create(
         { id: 1, role: UserRole.NORMAL },
         {
@@ -121,10 +85,31 @@ describe('ArticleService', () => {
         },
         [],
       );
-    expect(fn).rejects.toThrow(ForbiddenException);
+    expect(work).rejects.toThrow(ForbiddenException);
   });
 
-  it('should return article.', async () => {
-    expect((await service.findOne(1)).id).toBe(1);
+  it('게시글 조회 결과를 반환합니다.', async () => {
+    const article = await service.findOne(1);
+    expect(article.id).toBe(1);
+  });
+
+  it('게시글 삭제 결과를 반환합니다.', async () => {
+    const result = await service.remove({ id: 1, role: UserRole.ADMIN }, 1);
+    expect(result).toEqual({ message: '게시글을 삭제했습니다.' });
+  });
+
+  it('관리자는 사용자의 글을 삭제할 수 있습니다.', async () => {
+    const result = await service.remove({ id: 2, role: UserRole.ADMIN }, 1);
+    expect(result).toEqual({ message: '게시글을 삭제했습니다.' });
+  });
+
+  it('사용자는 자신의 글만 삭제할 수 있습니다.', async () => {
+    const work = async () => await service.remove({ id: 2, role: UserRole.NORMAL }, 1);
+    expect(work).rejects.toThrow(ForbiddenException);
+  });
+
+  it('사용자는 공지사항을 삭제할 수 없습니다.', async () => {
+    const work = async () => await service.remove({ id: 1, role: UserRole.NORMAL }, 1);
+    expect(work).rejects.toThrow(ForbiddenException);
   });
 });
