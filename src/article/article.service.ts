@@ -17,8 +17,10 @@ import { UserEntity, UserRole } from 'src/database/model/user.entity';
 import { FindArticlesQueryDto, Period, SortOrder } from 'src/article/dto/find-articles.dto';
 import { ImageEntity } from 'src/database/model/image.entity';
 import { Cron } from '@nestjs/schedule';
-import { SearchArticlesQueryDto, SerachType } from 'src/article/dto/search-articles.dto';
+import { SearchArticlesQueryDto, SearchType } from 'src/article/dto/search-articles.dto';
 import { CommentService } from 'src/comment/comment.service';
+import { isAdmin } from 'src/common/util/user';
+import { isNotice } from 'src/common/util/article';
 
 @Injectable()
 export class ArticleService {
@@ -40,13 +42,16 @@ export class ArticleService {
     payload: CreateArticleDto,
     files: Array<Express.Multer.File> = [],
   ) {
-    if (user.role !== UserRole.ADMIN && payload.category == ArticleCategory.NOTICE) {
+    if (isNotice(payload) && !isAdmin(user)) {
       throw new ForbiddenException('권한이 없습니다.');
     }
 
     const uploadResult = await this.s3service.upload(files);
-    if (files.length !== 0 && uploadResult.failed.length !== 0) {
-      // logics to delete uploaded objects
+    const failedCount = uploadResult.failed.length;
+
+    // 파일이 첨부되지 않은 경우엔 0일것
+    if (failedCount > 0) {
+      // TODO: delete uploaded object
       throw new InternalServerErrorException('게시글 등록에 실패했습니다.');
     }
 
@@ -54,11 +59,14 @@ export class ArticleService {
       .transaction('REPEATABLE READ', async (manager) => {
         const article = await manager.save(ArticleEntity.from({ ...payload, authorId: user.id }));
         const imageEntities = uploadResult.uploaded.map((upload) =>
-          ImageEntity.from({ url: upload.location, article }),
+          // article id가 필요해서 Promise.all로 묶을 수가 없음
+          ImageEntity.from({ url: upload.location, articleId: article.id }),
         );
+
         await manager.save(imageEntities);
       })
       .catch((e) => {
+        console.log(e); // TODO: logging
         throw new InternalServerErrorException('게시글 등록에 실패했습니다.');
       });
 
@@ -73,17 +81,19 @@ export class ArticleService {
     };
 
     switch (query.type) {
-      case SerachType.TITLE:
+      case SearchType.TITLE:
         whereCondition.where = { title: Like(`%${query.keyword}%`) };
         break;
-      case SerachType.AUTHOR:
+
+      case SearchType.AUTHOR:
         const users = await this.userRepository.find({
           where: { name: Like(`%${query.keyword}%`) },
         });
         const userIds = users.map((user) => user.id);
         whereCondition.where = [{ author: { id: In(userIds) } }];
         break;
-      case SerachType.ALL:
+
+      case SearchType.ALL:
         const matchedUsers = await this.userRepository.find({
           where: { name: Like(`%${query.keyword}%`) },
         });
@@ -95,7 +105,12 @@ export class ArticleService {
         break;
     }
 
-    return { articles: await this.articleRepository.find(whereCondition) };
+    const articles = await this.articleRepository.find(whereCondition).catch((e) => {
+      console.log(e); // TODO: logging
+      throw new InternalServerErrorException('게시글 검색에 실패했습니다.');
+    });
+
+    return { articles };
   }
 
   public async findMany(query: FindArticlesQueryDto) {
@@ -125,11 +140,16 @@ export class ArticleService {
       options.where = { createdAt: MoreThan(dateLimit) };
     }
 
-    return { articles: await this.articleRepository.find(options) };
+    const articles = await this.articleRepository.find(options).catch((e) => {
+      console.log(e); // TODO: logging
+      throw new InternalServerErrorException('게시글 목록 조회에 실패했습니다.');
+    });
+
+    return { articles };
   }
 
   public async findOne(id: number) {
-    let article =
+    const article =
       (await this.articleStore.get<ArticleEntity>(id.toString())) ??
       (await this.articleRepository.findOne({
         where: { id },
@@ -140,29 +160,30 @@ export class ArticleService {
       throw new NotFoundException('게시글이 존재하지 않습니다.');
     }
 
-    this.articleStore.set(id.toString(), { ...article, view: ++article.view }, 11000);
+    // 사용자는 캐싱을 굳이 기다리지 않아도 됨
+    this.articleStore.set(id.toString(), { ...article, view: ++article.view }, 11000).catch((e) => {
+      console.log(e); // TODO: logging
+    });
 
-    const commentsWithReplies = await this.commentService.getCommentsAndReplies(id);
+    const comments = await this.commentService.getCommentsAndReplies(id).catch((e) => {
+      console.log(e); // TODO: logging
+      throw new InternalServerErrorException('게시글 조회에 실패했습니다.');
+    });
 
     const { deletedAt, updatedAt, images: imgs, ...rest } = article;
     const images = imgs ? imgs.map((v) => v.url) : [];
 
-    return { ...rest, images, view: rest.view, comments: commentsWithReplies };
+    return { ...rest, images, comments };
   }
 
-  public async update(
-    user: ReqUser,
-    id: number,
-    updateArticleDto: UpdateArticleDto,
-    files: Array<Express.Multer.File>,
-  ) {
+  public async update(user: ReqUser, id: number, updateArticleDto: UpdateArticleDto) {
     await this.entityManager.transaction(async (manager) => {
       const article = await manager.findOneBy(ArticleEntity, { id });
       if (!article) {
         throw new NotFoundException('게시글이 존재하지 않습니다.');
       }
 
-      if (article.category === ArticleCategory.NOTICE && user.role !== UserRole.ADMIN) {
+      if (isNotice(article) && !isAdmin(user)) {
         throw new ForbiddenException('권한이 없습니다.');
       }
 
@@ -179,23 +200,21 @@ export class ArticleService {
       where: { id },
       relations: ['images', 'comments', 'comments.replies'],
     });
+
     if (!entity) {
       throw new NotFoundException('게시글이 존재하지 않습니다.');
     }
 
-    if (entity.category === ArticleCategory.NOTICE && user.role !== UserRole.ADMIN) {
+    if (!isAdmin(user) && user.id !== entity.authorId) {
       throw new ForbiddenException('권한이 없습니다.');
     }
 
     await this.entityManager
       .transaction(async (tx) => {
-        await Promise.all([
-          ...entity.comments.map((comment) => tx.softRemove(comment)),
-          tx.softRemove(entity),
-        ]);
+        await Promise.all([tx.softRemove(entity.comments), tx.softRemove(entity)]);
       })
       .catch((e) => {
-        console.log(e);
+        console.log(e); // TODO: logging
         throw new InternalServerErrorException('게시글 삭제 중 오류가 발생했습니다.');
       });
 
@@ -205,9 +224,12 @@ export class ArticleService {
   @Cron('*/10 * * * * *')
   public async updateViewCount() {
     const keys = await this.articleStore.store.keys();
-    keys.forEach(async (v) => {
-      const a = await this.articleStore.get<ArticleEntity>(v);
-      if (a) this.articleRepository.update({ id: a.id }, { view: a.view });
-    });
+    for (const key of keys) {
+      const article = await this.articleStore.get<ArticleEntity>(key);
+      if (article)
+        this.articleRepository.update({ id: article.id }, { view: article.view }).catch((e) => {
+          console.log(e); // TODO: logging
+        });
+    }
   }
 }

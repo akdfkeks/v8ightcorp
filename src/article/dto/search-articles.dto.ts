@@ -1,16 +1,16 @@
 import { Transform } from 'class-transformer';
 import { IsEnum, IsInt, IsNotEmpty, IsOptional, IsString, Min, MinLength } from 'class-validator';
 
-export enum SerachType {
+export enum SearchType {
   ALL = 'all',
   TITLE = 'title',
   AUTHOR = 'author',
 }
 
 export class SearchArticlesQueryDto {
-  @IsEnum(SerachType)
+  @IsEnum(SearchType)
   @IsOptional()
-  type: SerachType = SerachType.ALL;
+  type: SearchType = SearchType.ALL;
 
   @MinLength(4)
   @IsNotEmpty()

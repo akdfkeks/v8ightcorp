@@ -67,15 +67,13 @@ export class ArticleController {
     return this.articleService.findOne(id);
   }
 
-  @UseInterceptors(FilesInterceptor('images'))
   @Patch(':id')
   update(
     @Param('id', ParseIntPipe) id: number,
     @RequestUser() user: ReqUser,
-    @UploadedFiles() files: Array<Express.Multer.File>,
     @Body() updateArticleDto: UpdateArticleDto,
   ) {
-    return this.articleService.update(user, id, updateArticleDto, files);
+    return this.articleService.update(user, id, updateArticleDto);
   }
 
   @Delete(':id')
