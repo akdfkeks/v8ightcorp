@@ -10,9 +10,9 @@ import { CreateReplyDto } from 'src/comment/dto/create-reply';
 import { UpdateCommentDto } from 'src/comment/dto/update-comment';
 import { UpdateReplyDto } from 'src/comment/dto/update-reply';
 import { ReqUser } from 'src/common/interface/user';
+import { isAdmin } from 'src/common/util/user';
 import { ArticleEntity } from 'src/database/model/article.entity';
 import { CommentEntity, ReplyEntity } from 'src/database/model/comment.entity';
-import { UserRole } from 'src/database/model/user.entity';
 import { Repository } from 'typeorm';
 
 @Injectable()
@@ -122,17 +122,17 @@ export class CommentService {
   }
 
   public async delete(user: ReqUser, id: number) {
-    const entityWithRelated = await this.commentRepository.findOne({
+    const entity = await this.commentRepository.findOne({
       where: { id },
       relations: ['replies'],
     });
-    console.log(entityWithRelated);
+    console.log(entity);
 
-    if (!entityWithRelated) throw new NotFoundException('댓글이 존재하지 않습니다.');
-    if (entityWithRelated.authorId !== user.id || user.role !== UserRole.ADMIN)
+    if (!entity) throw new NotFoundException('댓글이 존재하지 않습니다.');
+    if (entity.authorId !== user.id && !isAdmin(user))
       throw new ForbiddenException('댓글을 삭제할 권한이 없습니다.');
 
-    await this.commentRepository.softRemove(entityWithRelated).catch((e) => {
+    await this.commentRepository.softRemove(entity).catch((e) => {
       throw new InternalServerErrorException('댓글을 삭제하지 못했습니다.');
     });
 
@@ -143,7 +143,7 @@ export class CommentService {
     const entity = await this.replyRepository.findOneBy({ id });
 
     if (!entity) throw new NotFoundException('답글이 존재하지 않습니다.');
-    if (entity.author.id !== user.id || user.role !== UserRole.ADMIN)
+    if (entity.authorId !== user.id && !isAdmin(user))
       throw new ForbiddenException('답글을 삭제할 권한이 없습니다.');
 
     await this.replyRepository.softRemove(entity).catch((e) => {
