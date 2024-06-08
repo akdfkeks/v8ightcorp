@@ -211,10 +211,7 @@ export class ArticleService {
 
     await this.entityManager
       .transaction(async (tx) => {
-        await Promise.all([
-          ...entity.comments.map((comment) => tx.softRemove(comment)),
-          tx.softRemove(entity),
-        ]);
+        await Promise.all([tx.softRemove(entity.comments), tx.softRemove(entity)]);
       })
       .catch((e) => {
         console.log(e); // TODO: logging
@@ -227,9 +224,12 @@ export class ArticleService {
   @Cron('*/10 * * * * *')
   public async updateViewCount() {
     const keys = await this.articleStore.store.keys();
-    keys.forEach(async (v) => {
-      const a = await this.articleStore.get<ArticleEntity>(v);
-      if (a) this.articleRepository.update({ id: a.id }, { view: a.view });
-    });
+    for (const key of keys) {
+      const article = await this.articleStore.get<ArticleEntity>(key);
+      if (article)
+        this.articleRepository.update({ id: article.id }, { view: article.view }).catch((e) => {
+          console.log(e); // TODO: logging
+        });
+    }
   }
 }
