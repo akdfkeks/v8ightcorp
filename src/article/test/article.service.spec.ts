@@ -1,10 +1,10 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ArticleService } from '../article.service';
 import { S3Service } from 'src/aws/s3.service';
-import { EntityManager, ObjectLiteral, Repository, createQueryBuilder } from 'typeorm';
+import { EntityManager, Repository } from 'typeorm';
 import { ArticleCategory, ArticleEntity } from 'src/database/model/article.entity';
 import { getEntityManagerToken, getRepositoryToken } from '@nestjs/typeorm';
-import { ForbiddenException, NotFoundException } from '@nestjs/common';
+import { ForbiddenException } from '@nestjs/common';
 import { CacheModule } from '@nestjs/cache-manager';
 import { UserEntity, UserRole } from 'src/database/model/user.entity';
 import { CommentEntity, ReplyEntity } from 'src/database/model/comment.entity';
@@ -88,17 +88,10 @@ describe('ArticleService', () => {
     service = module.get<ArticleService>(ArticleService);
     articleRepository = module.get<Repository<ArticleEntity>>(getRepositoryToken(ArticleEntity));
     entityManager = module.get<EntityManager>(getEntityManagerToken());
-
-    await articleRepository.save({
-      id: 1,
-      title: 'test',
-      content: 'test',
-      category: ArticleCategory.NOTICE,
-    });
   });
 
-  it('should return message.', async () => {
-    const r = await service.create(
+  it('게시글 등록 결과를 반환합니다.', async () => {
+    const result = await service.create(
       { id: 1, role: UserRole.ADMIN },
       {
         title: 'test',
@@ -107,11 +100,11 @@ describe('ArticleService', () => {
       },
       [],
     );
-    expect(r).toEqual({ message: '게시글을 등록했습니다.' });
+    expect(result).toEqual({ message: '게시글을 등록했습니다.' });
   });
 
-  it('should throw forbidden exception.', async () => {
-    const fn = async () =>
+  it('일반 사용자는 공지사항을 등록할 수 없습니다.', async () => {
+    const work = async () =>
       await service.create(
         { id: 1, role: UserRole.NORMAL },
         {
@@ -121,10 +114,26 @@ describe('ArticleService', () => {
         },
         [],
       );
-    expect(fn).rejects.toThrow(ForbiddenException);
+    expect(work).rejects.toThrow(ForbiddenException);
   });
 
-  it('should return article.', async () => {
-    expect((await service.findOne(1)).id).toBe(1);
+  it('게시글 조회 결과를 반환합니다.', async () => {
+    const article = await service.findOne(1);
+    expect(article.id).toBe(1);
+  });
+
+  it('게시글 삭제 결과를 반환합니다.', async () => {
+    const result = await service.remove({ id: 1, role: UserRole.ADMIN }, 1);
+    expect(result).toEqual({ message: '게시글을 삭제했습니다.' });
+  });
+
+  it('일반 사용자는 자신의 글만 삭제할 수 있습니다.', async () => {
+    const work = async () => await service.remove({ id: 2, role: UserRole.NORMAL }, 1);
+    expect(work).rejects.toThrow(ForbiddenException);
+  });
+
+  it('일반 사용자는 공지사항을 삭제할 수 없습니다.', async () => {
+    const work = async () => await service.remove({ id: 1, role: UserRole.NORMAL }, 1);
+    expect(work).rejects.toThrow(ForbiddenException);
   });
 });
