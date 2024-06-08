@@ -4,11 +4,13 @@ v8ightcorp backend assignment
 
 요청 처리 중 예외 발생 시 아래 형식의 응답을 반환합니다.
 
-| _field_    | _type_               |
-| ---------- | -------------------- |
-| message    | string \| string [ ] |
-| error      | string               |
-| statusCode | number               |
+```typescript
+interface ErrorResponse {
+  message: string | string[];
+  error?: string;
+  statusCode?: number;
+}
+```
 
 # User, Auth API
 
@@ -18,18 +20,22 @@ v8ightcorp backend assignment
 
 ### Request Body
 
-| _field_  | _type_ | _note_                      |
-| -------- | ------ | --------------------------- |
-| email    | string |                             |
-| password | string |                             |
-| name     | number |                             |
-| role     | string | 사용자 역할 (admin, normal) |
+```typescript
+interface CreateUserRequest {
+  email: string;
+  password: string;
+  name: string;
+  role: 'admin' | 'normal'; // 관리자, 사용자
+}
+```
 
 ### Response Body
 
-| _field_ | _type_ | _note_    |
-| ------- | ------ | --------- |
-| message | string | 처리 결과 |
+```typescript
+interface ResponseBody {
+  message: string; // 처리 결과
+}
+```
 
 ## `Post` /auth/login
 
@@ -37,21 +43,21 @@ Access, Refresh Token을 발급합니다.
 
 ### Request Body
 
-| _field_  | _type_ | _note_ |
-| -------- | ------ | ------ |
-| email    | string |        |
-| password | string |        |
+```typescript
+interface LoginRequest {
+  email: string;
+  password: string;
+}
+```
 
 ### Response Body
 
-| _field_ | _type_   | _note_ |
-| ------- | -------- | ------ |
-| token   | TokenSet |        |
-
 ```typescript
-interface TokenSet {
-  access: string;
-  refresh: string;
+interface ResponseBody {
+  token: {
+    access: string;
+    refresh: string;
+  };
 }
 ```
 
@@ -61,37 +67,44 @@ Refresh Token을 이용해 인증 토큰을 재발급합니다.
 
 ### Request Body
 
-| _field_ | _type_ | _note_        |
-| ------- | ------ | ------------- |
-| refresh | string | Refresh Token |
+```typescript
+interface RefreshRequest {
+  refresh: string; // Refresh Token
+}
+```
 
 ### Response Body
 
-| _field_     | _type_ | _note_              |
-| ----------- | ------ | ------------------- |
-| accessToken | string | 갱신된 Access Token |
+```typescript
+interface ResponseBody {
+  accessToken: string; // 갱신된 Access Token
+}
+```
 
 # Article API
 
 ## `POST` /articles
 
-게시글을 생성합니다.
-`images` field의 경우 확장자 필터링이나 용량 제한을 설정하지 않았으니 테스트 시 주의해주세요.
+게시글을 생성합니다. 사진 첨부 기능의 경우 확장자 및 용량 제한을 설정하지 않았으니 테스트 시 주의해주세요.
 
 ### Request Body (FormData)
 
-| _field_  | _type_   | _note_               |
-| -------- | -------- | -------------------- |
-| title    | string   | 제목                 |
-| category | string   | 분류 (notice, qna)   |
-| content  | string   | 본문                 |
-| images   | File [ ] | 첨부 사진 (최대 5장) |
+```typescript
+interface ArticleRequest {
+  title: string; // 제목
+  category: 'notice' | 'qna'; // 분류 (공지사항, QnA)
+  content: string; // 본문
+  images: File[]; // 첨부 사진 (최대 5장)
+}
+```
 
 ### Response Body
 
-| _field_ | _type_ | _note_    |
-| ------- | ------ | --------- |
-| message | string | 처리 결과 |
+```typescript
+interface ResponseBody {
+  message: string; // 처리 결과
+}
+```
 
 ## `GET` /articles/:id
 
@@ -99,21 +112,43 @@ Refresh Token을 이용해 인증 토큰을 재발급합니다.
 
 ### Parmeters
 
-| _field_ | _note_    |
-| ------- | --------- |
-| id      | 게시글 ID |
+```typescript
+interface ArticleParameters {
+  id: number; // 게시글 ID
+}
+```
 
 ### Response Body
 
-| _field_   | _type_   | _note_             |
-| --------- | -------- | ------------------ |
-| id        | number   | 게시글 ID          |
-| category  | string   | 분류 (notice, qna) |
-| title     | string   | 제목               |
-| content   | string   | 본문               |
-| view      | number   | 조회수             |
-| createdAt | string   | 작성일             |
-| images    | string[] | 첨부 사진          |
+```typescript
+interface ArticleResponse {
+  id: number;
+  category: string;
+  title: string;
+  content: string;
+  view: number;
+  createdAt: string; // Date and Time in UTC (ISO 8601)
+  images: string[]; // Array of image urls
+  comments: Comment[];
+}
+
+interface Comment {
+  id: number;
+  authorId: number;
+  authorName: string;
+  content: string;
+  createdAt: string;
+  replies: Reply[];
+}
+
+interface Reply {
+  id: number;
+  authorId: number;
+  authorName: string;
+  content: string;
+  createdAt: string;
+}
+```
 
 ## `GET` /articles/search
 
@@ -121,26 +156,26 @@ Refresh Token을 이용해 인증 토큰을 재발급합니다.
 
 ### Query
 
-| _field_ | _note_                         |
-| ------- | ------------------------------ |
-| type    | 검색 기준 (all, author, title) |
-| keyword | 검색어                         |
-| page    | default 1                      |
+```typescript
+interface SearchQuery {
+  type: 'all' | 'author' | 'title'; // 검색 기준
+  keyword: string; // 검색어, 최소 4글자
+  page: number; // 기본값 1
+}
+```
 
 ### Response Body
 
-| _field_  | _type_      | _note_      |
-| -------- | ----------- | ----------- |
-| articles | ArticleList | 게시글 목록 |
-
 ```typescript
-type ArticleList = Array<{
-  id: number;
-  title: string;
-  category: string;
-  view: number;
-  createdAt: string; // Date and Time in UTC (ISO 8601)
-}>;
+interface SearchResponse {
+  articles: Array<{
+    id: number;
+    title: string;
+    category: string;
+    view: number;
+    createdAt: string; // Date and Time in UTC (ISO 8601)
+  }>;
+}
 ```
 
 ## `GET` /articles
@@ -149,26 +184,26 @@ type ArticleList = Array<{
 
 ### Query
 
-| _field_ | _note_                            |
-| ------- | --------------------------------- |
-| sort    | 정렬 기준 (latest, best)          |
-| period  | 검색 기간 (all, year,month,week ) |
-| page    | default 0                         |
+```typescript
+interface QueryOptions {
+  sort: 'latest' | 'best'; // 정렬 기준
+  period: 'all' | 'year' | 'month' | 'week'; // 검색 기간
+  page: number; // 기본값 0
+}
+```
 
 ### Response Body
 
-| _field_  | _type_      | _note_      |
-| -------- | ----------- | ----------- |
-| articles | ArticleList | 게시글 목록 |
-
 ```typescript
-type ArticleList = Array<{
-  id: number;
-  title: string;
-  category: string;
-  view: number;
-  createdAt: string; // Date and Time in UTC (ISO 8601)
-}>;
+interface ArticleListResponse {
+  articles: Array<{
+    id: number;
+    title: string;
+    category: string;
+    view: number;
+    createdAt: string;
+  }>;
+}
 ```
 
 ## `PATCH` /articles/:id
@@ -177,17 +212,29 @@ type ArticleList = Array<{
 
 ### Parmeters
 
-| _field_ | _note_    |
-| ------- | --------- |
-| id      | 게시글 ID |
+```typescript
+interface Parameters {
+  id: number; // 게시글 ID
+}
+```
 
 ### Request Body
 
-| _field_  | _type_  | _note_             |
-| -------- | ------- | ------------------ |
-| title    | string? | 제목               |
-| category | string? | 분류 (notice, qna) |
-| content  | string? | 본문               |
+```typescript
+interface RequestBody {
+  title?: string; // 제목
+  category?: 'notice' | 'qna'; // 분류 (공지사항, QnA)
+  content?: string; // 본문
+}
+```
+
+### Response Body
+
+```typescript
+interface ResponseBody {
+  message: string; // 처리 결과
+}
+```
 
 ## `DELETE` /articles/:id
 
@@ -195,12 +242,94 @@ type ArticleList = Array<{
 
 ### Parmeters
 
-| _field_ | _note_    |
-| ------- | --------- |
-| id      | 게시글 ID |
+```typescript
+interface Parameters {
+  id: number; // 게시글 ID
+}
+```
 
 ### Response Body
 
-| _field_ | _type_ | _note_    |
-| ------- | ------ | --------- |
-| message | string | 처리 결과 |
+```typescript
+interface ResponseBody {
+  message: string; // 처리 결과
+}
+```
+
+# Comment API
+
+## `POST` /articles/:id/comments
+
+댓글을 생성합니다.
+
+### Parameters
+
+```typescript
+interface Parameters {
+  id: number; // 게시글 ID
+}
+```
+
+### Request Body
+
+```typescript
+interface RequestBody {
+  content: string; // 댓글 내용
+}
+```
+
+### Response Body
+
+```typescript
+interface ResponseBody {
+  message: string; // 처리 결과
+}
+```
+
+## `DELETE` /comments/:id
+
+댓글을 삭제합니다.
+
+### Parameters
+
+```typescript
+interface Parameters {
+  id: number; // 댓글 ID
+}
+```
+
+### Response Body
+
+```typescript
+interface ResponseBody {
+  message: string; // 처리 결과
+}
+```
+
+## `POST` /comments/:id/replies
+
+댓글에 답글을 생성합니다.
+
+### Parameters
+
+```typescript
+interface Parameters {
+  id: number; // 댓글 ID
+}
+```
+
+### Request Body
+
+```typescript
+interface RequestBody {
+  content: string; // 답글 내용
+}
+```
+
+### Response Body
+
+```typescript
+interface ResponseBody {
+  message: string; // 처리 결과
+}
+```
